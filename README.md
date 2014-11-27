@@ -3,7 +3,7 @@ java-wemo-bridge
 
 ##REST bridge for WeMo
 
-Want to talk: peter@unrelatedlabs.com
+Questions, suggestions: peter@unrelatedlabs.com
 
 #Starting
 java -jar wemo-bridge.jar
