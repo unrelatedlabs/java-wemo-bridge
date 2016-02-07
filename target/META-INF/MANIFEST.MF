@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Built-By: peter
+Build-Jdk: 1.7.0_79
+Created-By: Apache Maven 3.3.9
+Main-Class: com.unrelatedlabs.wemo.WemoBridge
+Archiver-Version: Plexus Archiver
+

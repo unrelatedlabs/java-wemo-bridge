@@ -10,17 +10,17 @@ import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 
-public class WemoSwitch {
+public class WemoSwitch extends Device {
 	public String location;
 	public Map<String, String> headers;
-	public String friendlyName;
-	public String name;
+
 
 	public InetAddress address;
-	public boolean isOn;
-	public Date stateUpdateTime = new Date();
-	public String serialNumber;
 
+	public WemoSwitch(){
+		type = "wemo";
+	}
+	
 	public void retrieveState() {
 
 		try {
@@ -33,7 +33,7 @@ public class WemoSwitch {
 			String state = resp.replaceAll(
 					"[\\d\\D]*<BinaryState>(.*)</BinaryState>[\\d\\D]*", "$1");
 
-			isOn = state.equals("1") ? true : false;
+			on = state.equals("1") ? true : false;
 			stateUpdateTime = new Date();
 
 		} catch (IOException e) {
@@ -52,7 +52,7 @@ public class WemoSwitch {
 						.replace("{{state}}", onOff ? "1" : "0"));
 
 		WemoBridge.log.info("setOn " + resp);
-		isOn = onOff;
+		on = onOff;
 	}
 
 	private String call(String endpoint, String soapCall, String content) {
@@ -91,8 +91,11 @@ public class WemoSwitch {
 		}
 	}
 
-	public static String normalizeName(String deviceName) {
-		return deviceName.toLowerCase().replace(" ", "_");
+	public boolean matches(String name){
+		if( super.matches(name)){
+			return true;
+		}
+		return this.serialNumber.equals( normalizeName(name));
 	}
 
 	@Override

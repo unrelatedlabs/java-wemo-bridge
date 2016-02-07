@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<meta name = "viewport" content = "width = device-width, initial-scale = 1, user-scalable = no">
+
+<title>Switch</title>
+    <script src="/jquery-1.11.1.min.js"></script>
+    <script src="/wemo.js"></script>
+
+<script type="text/javascript">
+function getParameter(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? undefined : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+$(function(){
+	$("body").css("background",getParameter("back"));
+	
+	var sw = getParameter("switch") || "bedroom" ;
+	
+	$("div.pad").click(function(){
+		//alert("Hello");
+		
+		$.get("/devices/"+sw+"/toggle?_ts="+(new Date()).getTime());
+	});
+});
+
+
+</script>
+<style type="text/css">
+body {
+	background-size:100% auto;
+	background-image: url('/img/birch1.jpg');
+	padding:0px;
+	margin:0px;
+	height:100%;
+}
+html{
+	height:100%;
+}
+div.pad{
+	//background-color: #ff0000;
+	height: 100%;
+}
+</style>
+</head>
+<body>
+<div class='pad'>
+<img src='/img/birch1.jpg'/>
+</div>
+</body>
+</html>

@@ -9,8 +9,11 @@ import java.net.MulticastSocket;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -38,9 +41,11 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
  */
 public class WemoBridge extends DefaultHandler {
 
+	LifxManager lifxManager;
+	
 	public static final Logger log = Logger.getAnonymousLogger();
 
-	static ArrayList<WemoSwitch> devices = new ArrayList<WemoSwitch>();
+	static ArrayList<Device> devices = new ArrayList<Device>();
 
 	public void handle(String target, Request baseRequest,
 			HttpServletRequest request, HttpServletResponse response)
@@ -61,7 +66,7 @@ public class WemoBridge extends DefaultHandler {
 
 		ContextHandler apiHandler = new ContextHandler("/devices/");
 
-		WemoBridge bridge = new WemoBridge();
+		final WemoBridge bridge = new WemoBridge();
 		
 		apiHandler.setHandler( bridge );
 
@@ -73,7 +78,16 @@ public class WemoBridge extends DefaultHandler {
 
 		bridge.startDiscoveryTimer();
 
+		
+		bridge.lifxManager = new LifxManager();
+		bridge.lifxManager.setNewDeviceHandler( new LifxNewDeviceHandler(){
+			public void onNewDevice(LifxDevice device){
+				bridge.addDevice(device);
+			}
+		});
+		
 		server.join();
+
 	}
 	
 	public void startDiscoveryTimer(){
@@ -164,7 +178,6 @@ public class WemoBridge extends DefaultHandler {
 					System.out.println(message);
 
 					new Thread(new Runnable() {
-						@Override
 						public void run() {
 							addDevice(message);
 						}
@@ -244,18 +257,30 @@ public class WemoBridge extends DefaultHandler {
 			}
 			
 			device.retrieveState();
-			synchronized ( devices ) {
-
-				if (!devices.contains(device)) {
-					devices.add(device);
-				}else{
-					devices.remove(device);
-					devices.add(device);
-				}
-			}
+			addDevice(device);
 			clearOldDevices();
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+	}
+
+	private void addDevice(Device device) {
+		synchronized ( devices ) {
+
+			if (!devices.contains(device)) {
+				devices.add(device);
+			}else{
+				devices.remove(device);
+				devices.add(device);
+			}
+			
+			Collections.sort(devices, new Comparator<Device>(){
+				public int compare(Device d1, Device d2)
+		        {
+		            return  d1.name.compareTo(d2.name);
+		        }
+			});
+			
 		}
 	}
 
@@ -265,9 +290,9 @@ public class WemoBridge extends DefaultHandler {
 	private void clearOldDevices() {
 		synchronized ( devices ) {
 			Date oldestAllowed = new Date( new Date().getTime()-5*60*1000);
-			ArrayList<WemoSwitch> toRemove = new ArrayList<WemoSwitch>();
-			for( WemoSwitch device : devices ){
-				if( device == null || device.stateUpdateTime.before( oldestAllowed ) ){
+			ArrayList<Device> toRemove = new ArrayList<Device>();
+			for( Device device : devices ){
+				if( device.stateUpdateTime.before( oldestAllowed ) && device instanceof WemoSwitch ){
 					toRemove.add(device);
 				}
 			}
@@ -285,7 +310,10 @@ public class WemoBridge extends DefaultHandler {
 		if (r.getPathInfo() == null || r.getPathInfo().equals("/")) {
 			HashMap<String, Object> resp = new HashMap<String, Object>();
 
-			resp.put("devices", devices);
+		
+			
+			resp.put("devices", devices );
+			
 			response.getWriter().println(
 					new ObjectMapper().writeValueAsString(resp));
 			baseRequest.setHandled(true);
@@ -303,24 +331,36 @@ public class WemoBridge extends DefaultHandler {
 		} else {
 			String deviceName = r.getPathInfo().replaceAll("/(.*)/.*", "$1");
 			String action = r.getPathInfo().replaceAll("/.*/(.*)", "$1");
+			
 
-			WemoSwitch d = getDevice(deviceName);
+			Device d = getDevice(deviceName);
+			
+			if( d == null ){
+				response.sendError(404);
+				baseRequest.setHandled(true);
+			}
 
 			HashMap<String, Object> resp = new HashMap<String, Object>();
 
 			if (action.equals("state")) {
 				// d.setOn( action.equals("on") );
 				d.retrieveState();
-				resp.put("state", d.isOn);
+				resp.put("state", d.isOn());
 			} else if (action.equals("on") || action.equals("off")) {
+				String color = r.getParameter("color");
+				
 				d.setOn(action.equals("on"));
+				if( color != null ){
+					d.setColor(color);
+				}
 				resp.put("status", "OK");
+				
 			} else if (action.equals("toggle")) {
-				d.setOn(!d.isOn);
+				d.setOn(!d.isOn());
 				resp.put("status", "OK");
-				resp.put("state", d.isOn);
+				resp.put("state", d.isOn());
 
-			} else {
+			}  else {
 
 			}
 
@@ -330,14 +370,10 @@ public class WemoBridge extends DefaultHandler {
 		}
 	}
 
-	private  WemoSwitch getDevice(String deviceName) {
+	private  Device getDevice(String deviceName) {
 		synchronized (devices) {
-			for (WemoSwitch s : devices) {
-				if (s.name.equals(WemoSwitch.normalizeName(deviceName))) {
-					return s;
-				}
-
-				if (s.serialNumber.equals(deviceName)) {
+			for (Device s : devices) {
+				if (s.matches(deviceName)) {
 					return s;
 				}
 			}

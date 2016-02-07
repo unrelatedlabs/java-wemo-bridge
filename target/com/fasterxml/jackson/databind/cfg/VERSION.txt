@@ -1,0 +1,3 @@
+2.1.4
+com.fasterxml.jackson.core
+jackson-databind
