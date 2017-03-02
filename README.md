@@ -6,7 +6,7 @@ java-wemo-bridge
 Questions, suggestions: peter@unrelatedlabs.com
 
 #Starting
-java -jar wemo-bridge.jar
+java -jar target/wemo-bridge-0.0.1-SNAPSHOT-jar-with-dependencies.jar
 
 Simple UI
 'http://localhost:9700
