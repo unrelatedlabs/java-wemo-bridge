@@ -107,7 +107,7 @@ public class WemoBridge extends DefaultHandler {
 	public void discovery() throws IOException {
 		// SSDP port
 		final int SSDP_PORT = 1900;
-		final int SSDP_SEARCH_PORT = 1901;
+		final int SSDP_SEARCH_PORT = 1903;
 		// Broadcast address for finding routers.
 		final String SSDP_IP = "239.255.255.250";
 		// Time out of the connection.
